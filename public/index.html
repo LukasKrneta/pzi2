@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <select id="METHOD">
+      <option value="GET">GET</option>
+      <option value="POST">POST</option>
+      <option value="PUT">PUT</option>
+      <option value="DELETE">DELETE</option></select
+    ><input type="text" id="TARGET" /><br />
+    Parametri za proslijediti (name:value):<br />
+    <input type="text" id="pname1" />:<input type="text" id="pval1" /><br />
+    <input type="text" id="pname2" />:<input type="text" id="pval2" /><br />
+    <input type="text" id="pname3" />:<input type="text" id="pval3" /><br />
+    <select id="ENCODE">
+      <option value="JSON">JSON</option>
+      <option value="FORM">x-www-form-urlencode</option></select
+    ><br />
+    <button id="SEND">SEND request</button><br />
+    <input type="text" id="auth" /><br />
+    <div
+      style="width: 100%; height: 20ch; border: 1px solid gray"
+      id="DATA"
+    ></div>
+    <script>
+      let b = document.getElementById("SEND");
+      let m = document.getElementById("METHOD");
+      let t = document.getElementById("TARGET");
+      let a = document.getElementById("auth");
+      let pn1 = document.getElementById("pname1");
+      let pn2 = document.getElementById("pname2");
+      let pn3 = document.getElementById("pname3");
+      let pv1 = document.getElementById("pval1");
+      let pv2 = document.getElementById("pval2");
+      let pv3 = document.getElementById("pval3");
+      let e = document.getElementById("ENCODE");
+      let d = document.getElementById("DATA");
+      b.addEventListener("click", async function () {
+        let encode = e.value;
+        let method = m.value;
+        let payload = null;
+        if (encode == "JSON") {
+          payload = {};
+          if (pn1.value != "") payload[pn1.value] = pv1.value;
+          if (pn2.value != "") payload[pn2.value] = pv2.value;
+          if (pn3.value != "") payload[pn3.value] = pv3.value;
+          payload = JSON.stringify(payload);
+        } else {
+          payload = "";
+          if (pn1.value != "")
+            payload =
+              payload +
+              (payload == "" ? "" : "&") +
+              pn1.value +
+              "=" +
+              pv1.value;
+          if (pn2.value != "")
+            payload =
+              payload +
+              (payload == "" ? "" : "&") +
+              pn2.value +
+              "=" +
+              pv2.value;
+          if (pn3.value != "")
+            payload =
+              payload +
+              (payload == "" ? "" : "&") +
+              pn3.value +
+              "=" +
+              pv3.value;
+          payload = new URLSearchParams(payload);
+        }
+
+        let req = {
+          headers: {
+            "Content-Type":
+              encode == "JSON"
+                ? "application/json; charset=UTF-8"
+                : "application/x-www-form-urlencoded; charset=UTF-8",
+          },
+        };
+        if (a.value != "") {
+          req.headers["AUTH"] = a.value;
+        }
+        let url = "." + t.value;
+        req.method = method;
+        if (method != "GET") req.body = payload;
+        else url = url + "?" + payload;
+
+        const response = await fetch(url, req);
+        let auth = response.headers.get("AUTH");
+        a.value = auth;
+        let data = await response.text();
+        d.innerText = data;
+        console.log(data);
+      });
+    </script>
+  </body>
+</html>

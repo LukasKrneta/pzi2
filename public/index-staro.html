@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>GET /users</h1>
+    <form action="/users" method="GET">
+        <input type="text" name="username">
+        <input type="password" name="password">
+        <input type="submit" value="Šalji">
+    </form>
+
+    <h1>POST /users</h1>
+    <form action="/users" method="POST">
+        <input type="text" name="username">
+        <input type="password" name="password">
+        <input type="submit" value="Šalji">
+    </form>
+
+    <h1>DELETE /users</h1>
+    <button id="DEL1">DELETE request x-www-form-urlencoded</button>
+    <script>
+        let b1=document.getElementById("DEL1")
+        b1.addEventListener("click",async function(){
+            const response = await fetch("./users", {
+                method: "DELETE",
+                body: new URLSearchParams({
+                    'username': 'Pero',
+                    'password': 'Perica123!'
+                }),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                },
+            });
+            let data=await response.text()
+        });
+
+        
+    </script>
+
+    <button id="DEL2">DELETE request JSON</button>
+    <script>
+        let b2=document.getElementById("DEL2")
+        b2.addEventListener("click",async function(){
+            let response = await fetch("./users", {
+                method: "DELETE",
+                body: JSON.stringify({
+                    userId: 1,
+                    title: "Fix my bugs",
+                    completed: false
+                }),
+                headers: {
+                    "Content-type": "application/json; charset=UTF-8"
+                }
+            });
+            let data=await response.text()
+        });
+
+        
+    </script>
+    
+    
+</body>
+</html>
