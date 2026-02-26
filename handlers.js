@@ -3,6 +3,16 @@ const crypto = require("node:crypto");
 
 const db = new sqlite.DatabaseSync("./pzi2.sqlite");
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS todos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+`);
+
 let sessions = [];
 
 // -----------------------------------------------------------
@@ -104,21 +114,34 @@ function GETusers(request, response, params) {
 function POSTusers(request, response, params) {
   let username = params["username"];
   let password = params["password"];
-  if (username == "" || password == "") {
+  if (!username || !password || username.trim() === "" || password.trim() === "") {
     response.writeHead(400, "Bad request");
     response.end();
     return true;
   }
 
+  let checkStmt = db.prepare("SELECT id FROM users WHERE username=:username");
+  let existing = checkStmt.get({ username: username.trim() });
+  if (existing) {
+    response.writeHead(409, "Username already exists");
+    response.end();
+    return true;
+  }
+
   let novi = {
-    username: username,
-    password: password,
+    username: username.trim(),
+    password: password.trim(),
   };
   let stmt = db.prepare(
     "insert into users (username,password) values (:username,:password)"
   );
-  let ret = stmt.run(params);
+  let ret = stmt.run(novi);
+
+  let roleStmt = db.prepare("INSERT INTO roles (user_id, rola) VALUES (:user_id, :rola)");
+  roleStmt.run({ user_id: ret.lastInsertRowid, rola: "user" });
+
   novi["id"] = ret.lastInsertRowid;
+  novi["rola"] = "user";
 
   let headers = {};
   headers["Content-Type"] = "application/json; charset=UTF-8";
@@ -172,11 +195,67 @@ function DELETEusers(request, response, params) {
 }
 
 function PUTusers(request, response, params) {
+  let sessionUser = authUser(request, response);
+  if (!sessionUser) return true;
+
+  if (!params.id) {
+    response.writeHead(400, "Bad request");
+    response.end();
+    return true;
+  }
+
+  let fields = [];
+  let bind = { id: params.id };
+
+  if (params.username != null && params.username.trim() !== "") {
+    fields.push("username=:username");
+    bind.username = params.username.trim();
+  }
+  if (params.password != null && params.password.trim() !== "") {
+    fields.push("password=:password");
+    bind.password = params.password.trim();
+  }
+
+  if (fields.length === 0) {
+    response.writeHead(400, "Nothing to update");
+    response.end();
+    return true;
+  }
+
+  let stmt = db.prepare("SELECT id FROM users WHERE username=:username");
+  let owner = stmt.get({ username: sessionUser.username });
+  if (!owner) {
+    response.writeHead(403, "Ferboten!");
+    response.end();
+    return true;
+  }
+
+  if (sessionUser.rola !== "super" && Number(params.id) !== Number(owner.id)) {
+    response.writeHead(403, "Ferboten!");
+    response.end();
+    return true;
+  }
+
+  let sql = "UPDATE users SET " + fields.join(",") + " WHERE id=:id";
+  let ret = db.prepare(sql).run(bind);
+
   let headers = {};
-  headers["Content-Type"] = "text/plain; charset=utf-8";
+  headers["Content-Type"] = "application/json; charset=UTF-8";
+  if (ret.changes === 0) {
+    response.writeHead(404, headers);
+    response.write(JSON.stringify({ error: "User not found" }));
+    response.end();
+    return true;
+  }
+
+  let updated = db
+    .prepare(
+      "SELECT users.id, users.username, users.password, roles.rola FROM users JOIN roles ON users.id=roles.user_id WHERE users.id=:id"
+    )
+    .get({ id: params.id });
+
   response.writeHead(200, headers);
-  response.write("username: " + params.username + "\n");
-  response.write("password: " + params.password + "\n");
+  response.write(JSON.stringify(updated));
   response.end();
   return true;
 }

@@ -1,102 +1,336 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>PZI2 SPA</title>
+    <style>
+      :root {
+        font-family: Arial, Helvetica, sans-serif;
+        color: #1f2937;
+        background: #f3f4f6;
+      }
+      body {
+        margin: 0;
+        padding: 1rem;
+      }
+      h1,
+      h2 {
+        margin: 0.3rem 0 0.8rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1rem;
+      }
+      .card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+        padding: 1rem;
+      }
+      input,
+      button,
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.55rem;
+        margin: 0.3rem 0;
+      }
+      button {
+        cursor: pointer;
+        border: 1px solid #cbd5e1;
+        background: #eef2ff;
+      }
+      button.secondary {
+        background: #f8fafc;
+      }
+      .row {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .row > * {
+        flex: 1;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0.5rem 0 0;
+      }
+      li {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin: 0.35rem 0;
+        padding: 0.55rem;
+        background: #fafafa;
+      }
+      .small {
+        font-size: 0.9rem;
+        color: #475569;
+      }
+      #status {
+        min-height: 1.4rem;
+        margin-bottom: 0.8rem;
+        font-weight: 600;
+      }
+      .muted {
+        color: #64748b;
+      }
+    </style>
   </head>
   <body>
-    <select id="METHOD">
-      <option value="GET">GET</option>
-      <option value="POST">POST</option>
-      <option value="PUT">PUT</option>
-      <option value="DELETE">DELETE</option></select
-    ><input type="text" id="TARGET" /><br />
-    Parametri za proslijediti (name:value):<br />
-    <input type="text" id="pname1" />:<input type="text" id="pval1" /><br />
-    <input type="text" id="pname2" />:<input type="text" id="pval2" /><br />
-    <input type="text" id="pname3" />:<input type="text" id="pval3" /><br />
-    <select id="ENCODE">
-      <option value="JSON">JSON</option>
-      <option value="FORM">x-www-form-urlencode</option></select
-    ><br />
-    <button id="SEND">SEND request</button><br />
-    <input type="text" id="auth" /><br />
-    <div
-      style="width: 100%; height: 20ch; border: 1px solid gray"
-      id="DATA"
-    ></div>
-    <script>
-      let b = document.getElementById("SEND");
-      let m = document.getElementById("METHOD");
-      let t = document.getElementById("TARGET");
-      let a = document.getElementById("auth");
-      let pn1 = document.getElementById("pname1");
-      let pn2 = document.getElementById("pname2");
-      let pn3 = document.getElementById("pname3");
-      let pv1 = document.getElementById("pval1");
-      let pv2 = document.getElementById("pval2");
-      let pv3 = document.getElementById("pval3");
-      let e = document.getElementById("ENCODE");
-      let d = document.getElementById("DATA");
-      b.addEventListener("click", async function () {
-        let encode = e.value;
-        let method = m.value;
-        let payload = null;
-        if (encode == "JSON") {
-          payload = {};
-          if (pn1.value != "") payload[pn1.value] = pv1.value;
-          if (pn2.value != "") payload[pn2.value] = pv2.value;
-          if (pn3.value != "") payload[pn3.value] = pv3.value;
-          payload = JSON.stringify(payload);
-        } else {
-          payload = "";
-          if (pn1.value != "")
-            payload =
-              payload +
-              (payload == "" ? "" : "&") +
-              pn1.value +
-              "=" +
-              pv1.value;
-          if (pn2.value != "")
-            payload =
-              payload +
-              (payload == "" ? "" : "&") +
-              pn2.value +
-              "=" +
-              pv2.value;
-          if (pn3.value != "")
-            payload =
-              payload +
-              (payload == "" ? "" : "&") +
-              pn3.value +
-              "=" +
-              pv3.value;
-          payload = new URLSearchParams(payload);
-        }
+    <h1>PZI2 Single Page App</h1>
+    <p class="small muted">
+      SPA klijent za postojeći API. Koristi <code>fetch</code> i podržava CRUD nad korisnicima i todo zapisima.
+    </p>
+    <div id="status"></div>
 
-        let req = {
+    <div class="grid">
+      <section class="card">
+        <h2>1) Login</h2>
+        <input id="loginUsername" placeholder="username" value="admin" />
+        <input id="loginPassword" placeholder="password" type="password" value="admin" />
+        <button id="loginBtn">Login (POST /login)</button>
+        <div class="small">AUTH token: <span id="authToken" class="muted">(nije prijavljen)</span></div>
+      </section>
+
+      <section class="card">
+        <h2>2) Users (entitet #1)</h2>
+        <button id="loadUsersBtn" class="secondary">Učitaj korisnike (GET /users)</button>
+
+        <h3>Dodaj korisnika</h3>
+        <input id="newUsername" placeholder="novi username" />
+        <input id="newPassword" placeholder="novi password" type="password" />
+        <button id="createUserBtn">Kreiraj (POST /users)</button>
+
+        <h3>Uredi korisnika</h3>
+        <input id="editUserId" placeholder="id korisnika" type="number" />
+        <input id="editUsername" placeholder="novi username (opcionalno)" />
+        <input id="editPassword" placeholder="novi password (opcionalno)" type="password" />
+        <button id="updateUserBtn">Ažuriraj (PUT /users)</button>
+
+        <h3>Obriši korisnika (super rola)</h3>
+        <input id="deleteUserId" placeholder="id korisnika" type="number" />
+        <button id="deleteUserBtn">Obriši (DELETE /users)</button>
+
+        <ul id="usersList"></ul>
+      </section>
+
+      <section class="card">
+        <h2>3) Todos (entitet #2)</h2>
+        <button id="loadTodosBtn" class="secondary">Učitaj moje todo (GET /todos)</button>
+
+        <h3>Dodaj todo</h3>
+        <input id="newTodoText" placeholder="tekst todo stavke" />
+        <button id="createTodoBtn">Dodaj (POST /todos)</button>
+
+        <h3>Uredi todo</h3>
+        <input id="editTodoId" placeholder="id todo" type="number" />
+        <input id="editTodoText" placeholder="novi tekst (opcionalno)" />
+        <select id="editTodoDone">
+          <option value="">done ne mijenjaj</option>
+          <option value="1">done = 1</option>
+          <option value="0">done = 0</option>
+        </select>
+        <button id="updateTodoBtn">Ažuriraj (PUT /todos)</button>
+
+        <h3>Obriši todo</h3>
+        <input id="deleteTodoId" placeholder="id todo" type="number" />
+        <button id="deleteTodoBtn">Obriši (DELETE /todos)</button>
+
+        <ul id="todosList"></ul>
+      </section>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      const authTokenEl = document.getElementById("authToken");
+      const usersList = document.getElementById("usersList");
+      const todosList = document.getElementById("todosList");
+
+      let authToken = "";
+
+      function setStatus(msg, isError = false) {
+        statusEl.textContent = msg;
+        statusEl.style.color = isError ? "#b91c1c" : "#166534";
+      }
+
+      async function api(path, method = "GET", data = null) {
+        const options = {
+          method,
           headers: {
-            "Content-Type":
-              encode == "JSON"
-                ? "application/json; charset=UTF-8"
-                : "application/x-www-form-urlencoded; charset=UTF-8",
+            "Content-Type": "application/json; charset=UTF-8",
           },
         };
-        if (a.value != "") {
-          req.headers["AUTH"] = a.value;
+        if (authToken) {
+          options.headers.AUTH = authToken;
         }
-        let url = "." + t.value;
-        req.method = method;
-        if (method != "GET") req.body = payload;
-        else url = url + "?" + payload;
 
-        const response = await fetch(url, req);
-        let auth = response.headers.get("AUTH");
-        a.value = auth;
-        let data = await response.text();
-        d.innerText = data;
-        console.log(data);
+        if (method === "GET" || method === "DELETE") {
+          const qs = data ? new URLSearchParams(data).toString() : "";
+          const url = qs ? `${path}?${qs}` : path;
+          const response = await fetch(url, options);
+          return handleResponse(response);
+        }
+
+        if (data) {
+          options.body = JSON.stringify(data);
+        }
+        const response = await fetch(path, options);
+        return handleResponse(response);
+      }
+
+      async function handleResponse(response) {
+        const newToken = response.headers.get("AUTH");
+        if (newToken) {
+          authToken = newToken;
+          authTokenEl.textContent = authToken;
+        }
+        const text = await response.text();
+        let parsed = text;
+        try {
+          parsed = text ? JSON.parse(text) : text;
+        } catch {
+          parsed = text;
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${typeof parsed === "string" ? parsed : JSON.stringify(parsed)}`);
+        }
+
+        return parsed;
+      }
+
+      function renderUsers(users) {
+        usersList.innerHTML = "";
+        users.forEach((u) => {
+          const li = document.createElement("li");
+          li.textContent = `#${u.id} | ${u.username} | lozinka: ${u.password}`;
+          usersList.appendChild(li);
+        });
+      }
+
+      function renderTodos(todos) {
+        todosList.innerHTML = "";
+        todos.forEach((t) => {
+          const li = document.createElement("li");
+          li.innerHTML = `#${t.id} | ${t.text} <strong>[done=${t.done}]</strong>`;
+          todosList.appendChild(li);
+        });
+      }
+
+      document.getElementById("loginBtn").addEventListener("click", async () => {
+        try {
+          await api("/login", "POST", {
+            username: document.getElementById("loginUsername").value,
+            password: document.getElementById("loginPassword").value,
+          });
+          setStatus("Uspješan login.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
+      });
+
+      document.getElementById("loadUsersBtn").addEventListener("click", async () => {
+        try {
+          const users = await api("/users", "GET");
+          renderUsers(users);
+          setStatus("Korisnici učitani.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
+      });
+
+      document.getElementById("createUserBtn").addEventListener("click", async () => {
+        try {
+          await api("/users", "POST", {
+            username: document.getElementById("newUsername").value,
+            password: document.getElementById("newPassword").value,
+          });
+          const users = await api("/users", "GET");
+          renderUsers(users);
+          setStatus("Korisnik kreiran.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
+      });
+
+      document.getElementById("updateUserBtn").addEventListener("click", async () => {
+        try {
+          const payload = { id: document.getElementById("editUserId").value };
+          const username = document.getElementById("editUsername").value;
+          const password = document.getElementById("editPassword").value;
+          if (username) payload.username = username;
+          if (password) payload.password = password;
+          await api("/users", "PUT", payload);
+          const users = await api("/users", "GET");
+          renderUsers(users);
+          setStatus("Korisnik ažuriran.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
+      });
+
+      document.getElementById("deleteUserBtn").addEventListener("click", async () => {
+        try {
+          await api("/users", "DELETE", { id: document.getElementById("deleteUserId").value });
+          const users = await api("/users", "GET");
+          renderUsers(users);
+          setStatus("Korisnik obrisan.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
+      });
+
+      document.getElementById("loadTodosBtn").addEventListener("click", async () => {
+        try {
+          const todos = await api("/todos", "GET");
+          renderTodos(todos);
+          setStatus("Todo zapisi učitani.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
+      });
+
+      document.getElementById("createTodoBtn").addEventListener("click", async () => {
+        try {
+          await api("/todos", "POST", {
+            text: document.getElementById("newTodoText").value,
+          });
+          const todos = await api("/todos", "GET");
+          renderTodos(todos);
+          setStatus("Todo kreiran.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
+      });
+
+      document.getElementById("updateTodoBtn").addEventListener("click", async () => {
+        try {
+          const payload = { id: document.getElementById("editTodoId").value };
+          const text = document.getElementById("editTodoText").value;
+          const done = document.getElementById("editTodoDone").value;
+          if (text) payload.text = text;
+          if (done !== "") payload.done = done === "1";
+          await api("/todos", "PUT", payload);
+          const todos = await api("/todos", "GET");
+          renderTodos(todos);
+          setStatus("Todo ažuriran.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
+      });
+
+      document.getElementById("deleteTodoBtn").addEventListener("click", async () => {
+        try {
+          await api("/todos", "DELETE", { id: document.getElementById("deleteTodoId").value });
+          const todos = await api("/todos", "GET");
+          renderTodos(todos);
+          setStatus("Todo obrisan.");
+        } catch (err) {
+          setStatus(err.message, true);
+        }
       });
     </script>
   </body>
